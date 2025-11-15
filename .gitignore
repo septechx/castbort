@@ -1,0 +1,6 @@
+.zig-cache
+.cache
+zig-out
+build
+
+.env
