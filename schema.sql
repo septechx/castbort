@@ -1,0 +1,6 @@
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE users (
+  id TEXT PRIMARY KEY,
+  money INTEGER NOT NULL DEFAULT 0
+)

@@ -39,7 +39,7 @@ pub fn build(b: *std.Build) void {
 
     const exe = b.addSystemCommand(&.{
         "clang++",
-        "-std=c++20",
+        "-std=c++23",
         "-Wall",
         "-o",
         "build/castbort",
