@@ -1,52 +1,66 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
-    // const target = b.standardTargetOptions(.{});
-    // const optimize = b.standardOptimizeOption(.{});
+const ExecutableOptions = struct {
+    name: []const u8,
+    source_files: []const []const u8,
+    include_dirs: []const []const u8,
+    library_dirs: []const []const u8,
+    libraries: []const []const u8,
+};
 
-    // const exe_mod = b.createModule(.{
-    //     .target = target,
-    //     .optimize = optimize,
-    //     .link_libcpp = true,
-    //     .link_libc = true,
-    // });
-    //
-    // exe_mod.addIncludePath(b.path("include/"));
-    // exe_mod.addLibraryPath(b.path("lib/"));
-    // exe_mod.linkSystemLibrary("dpp", .{});
-    //
-    // exe_mod.addCSourceFiles(.{
-    //     .files = &.{"src/main.cpp"},
-    //     .language = .cpp,
-    //     .flags = &[_][]const u8{
-    //         "-std=c++20",
-    //         "-Wall",
-    //     },
-    // });
-
-    // const exe = b.addExecutable(.{
-    //     .name = "castbort",
-    //     .root_module = exe_mod,
-    //     .use_llvm = true,
-    //     .use_lld = true,
-    // });
-
-    const build_dir = b.addSystemCommand(&.{
-        "mkdir",
-        "-p",
-        "build",
-    });
-
-    const exe = b.addSystemCommand(&.{
+fn addExecutable(b: *std.Build, comptime options: ExecutableOptions) *std.Build.Step.Run {
+    var cmd = std.ArrayList([]const u8).initCapacity(b.allocator, options.source_files.len +
+        options.include_dirs.len + options.library_dirs.len + options.libraries.len + 5) catch @panic("OOM");
+    defer cmd.deinit(b.allocator);
+    cmd.appendSlice(b.allocator, &.{
         "clang++",
         "-std=c++23",
         "-Wall",
         "-o",
-        "build/castbort",
-        "src/main.cpp",
-        "-Llib",
-        "-Iinclude",
-        "-ldpp",
+        "build/" ++ options.name,
+    }) catch @panic("OOM");
+    for (options.source_files) |source_file| {
+        cmd.appendSlice(b.allocator, &.{
+            source_file,
+        }) catch @panic("OOM");
+    }
+    for (options.include_dirs) |include_dir| {
+        cmd.appendSlice(b.allocator, &.{
+            "-I",
+            include_dir,
+        }) catch @panic("OOM");
+    }
+    for (options.library_dirs) |library_dir| {
+        cmd.appendSlice(b.allocator, &.{
+            "-L",
+            library_dir,
+        }) catch @panic("OOM");
+    }
+    for (options.libraries) |library| {
+        cmd.appendSlice(b.allocator, &.{
+            "-l",
+            library,
+        }) catch @panic("OOM");
+    }
+    const step = b.addSystemCommand(cmd.items);
+    return step;
+}
+
+pub fn build(b: *std.Build) void {
+    const build_dir = b.addSystemCommand(&.{ "mkdir", "-p", "build" });
+
+    const exe = addExecutable(b, .{
+        .name = "castbort",
+        .include_dirs = &.{"include"},
+        .library_dirs = &.{"lib"},
+        .source_files = &.{
+            "src/main.cpp",
+            "src/database.cpp",
+        },
+        .libraries = &.{
+            "dpp",
+            "sqlite3",
+        },
     });
 
     exe.step.dependOn(&build_dir.step);
@@ -54,11 +68,7 @@ pub fn build(b: *std.Build) void {
     const build_step = b.getInstallStep();
     build_step.dependOn(&exe.step);
 
-    const run_cmd = b.addSystemCommand(&.{
-        "env",
-        "LD_LIBRARY_PATH=lib",
-        "build/castbort",
-    });
+    const run_cmd = b.addSystemCommand(&.{ "env", "LD_LIBRARY_PATH=lib", "build/castbort" });
     run_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| {
         run_cmd.addArgs(args);
