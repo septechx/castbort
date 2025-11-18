@@ -14,9 +14,10 @@ int main() {
   bot.on_log(dpp::utility::cout_logger());
 
   bot.on_slashcommand([&db](const dpp::slashcommand_t &event) {
-    if (event.command.get_command_name() == "ping") {
+    const std::string cmd = event.command.get_command_name();
+    if (cmd == "ping") {
       event.reply("Pong!");
-    } else if (event.command.get_command_name() == "give_stones") {
+    } else if (cmd == "give_stones") {
       const std::string id =
           std::get<dpp::snowflake>(event.get_parameter("user")).str();
       const int to_give = std::get<int64_t>(event.get_parameter("stones"));
