@@ -2,6 +2,7 @@
 .cache
 zig-out
 build
+bin
 
 .env
 *.db
