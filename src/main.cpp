@@ -5,8 +5,9 @@
 #include <optional>
 
 #include "database.hpp"
+#include "video_generator.hpp"
 
-enum class Color { red, black, none };
+enum class Color { red, black, green };
 
 unsigned bounded_rand(unsigned range) {
   for (unsigned x, r;;)
@@ -42,6 +43,8 @@ int subtract_money(sqlpp::sqlite3::connection &db, const std::string &id,
   return new_money;
 }
 
+std::string bold(const std::string &str) { return "**" + str + "**"; }
+
 int main() {
   dotenv::init();
   std::srand(std::time({}));
@@ -62,28 +65,42 @@ int main() {
 
       const int new_money = give_money(db, id, to_give);
 
-      event.reply("<@" + id + "> now has " + std::to_string(new_money) +
-                  " stones!");
+      event.reply("<@" + id + "> now has " + bold(std::to_string(new_money)) +
+                  " stones");
     } else if (cmd == "roulette") {
       const int spent = std::get<int64_t>(event.get_parameter("money"));
       const std::string color =
           std::get<std::string>(event.get_parameter("color"));
       const std::string user_id = event.command.get_issuing_user().id.str();
 
-      const int rnd = bounded_rand(100);
-      const Color clr = rnd < 50   ? Color::red
-                        : rnd > 50 ? Color::black
-                                   : Color::none;
-      const bool won = (clr == Color::red && color == "red") ||
-                       (clr == Color::black && color == "black");
-      const int new_money = won ? give_money(db, user_id, spent)
-                                : subtract_money(db, user_id, spent);
-      const std::string msg = won ? "You won **" + std::to_string(spent) +
-                                        "** stones, and now have **"
-                                  : "You lost **" + std::to_string(spent) +
-                                        "** stones, and now have **";
+      event.thinking(false, [event, &db, user_id, spent, color](
+                                const dpp::confirmation_callback_t &callback) {
+        const int rnd = bounded_rand(100);
+        const Color clr = rnd < 50   ? Color::red
+                          : rnd > 50 ? Color::black
+                                     : Color::green;
+        const bool won = (clr == Color::red && color == "red") ||
+                         (clr == Color::black && color == "black");
+        const int new_money = won ? give_money(db, user_id, spent)
+                                  : subtract_money(db, user_id, spent);
+        const std::string clr_str = clr == Color::red     ? "🔴 Red"
+                                    : clr == Color::black ? "⚫ Black"
+                                                          : "🟢 Green";
 
-      event.reply(msg + std::to_string(new_money) + "** stones");
+        const std::string video_bytes =
+            generate_video("assets/castor.png", "assets/overlay.png");
+        dpp::message msg(event.command.channel_id, "a");
+        msg.add_file("out.gif", video_bytes, "image/gif");
+
+        event.edit_original_response(msg);
+
+        sleep(7);
+
+        event.edit_original_response(dpp::message(
+            "Ball landed on " + clr_str + ".\nYou " + (won ? "won" : "lost") +
+            " " + bold(std::to_string(spent)) + " stones, and now have " +
+            bold(std::to_string(new_money)) + " stones"));
+      });
     }
   });
 
