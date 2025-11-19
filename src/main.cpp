@@ -94,7 +94,8 @@ int main() {
 
         event.edit_original_response(msg);
 
-        sleep(7);
+        // Wait for the gif to play
+        sleep(8);
 
         event.edit_original_response(dpp::message(
             "Ball landed on " + clr_str + ".\nYou " + (won ? "won" : "lost") +

@@ -1,44 +1,46 @@
-#include "video_generator.hpp"
-#include <fstream>
-#include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 std::string generate_video(const std::string &f1_path,
                            const std::string &f2_path) {
-  std::string temp_video_path = "/tmp/video.mp4";
-  std::string temp_gif_path = "/tmp/video.gif";
-
-  std::string cmd = "ffmpeg -y -loop 1 -i " + f1_path + " -i " + f2_path +
-                    " -filter_complex "
+  std::string cmd = "ffmpeg -y -loglevel error -nostats "
+                    "-loop 1 -t 7 -i \"" +
+                    f1_path + "\" -i \"" + f2_path +
+                    "\" "
+                    "-filter_complex "
                     "\"[0:v]rotate='if(lte(t,7),2*PI*t*(1-t/10),2*PI*7*(1-7/"
-                    "10))':c=none:ow=rotw(iw):oh=roth(ih)[r];[r][1:v]overlay=("
-                    "W-w)/2:(H-h)/2\" -t 7 -c:v libx264 -pix_fmt yuv420p " +
-                    temp_video_path;
+                    "10))':c=none:ow=rotw(iw):oh=roth(ih)[r];"
+                    "[r][1:v]overlay=(W-w)/2:(H-h)/2,split=2[s0][s1];"
+                    "[s0]palettegen=stats_mode=diff[p];"
+                    "[s1][p]paletteuse\" "
+                    "-f gif -";
 
-  int ret = system(cmd.c_str());
-  if (ret != 0) {
-    throw std::runtime_error("ffmpeg command failed!");
+  FILE *pipe = popen(cmd.c_str(), "r");
+  if (!pipe) {
+    throw std::runtime_error("Failed to start ffmpeg process");
   }
 
-  std::string gif_cmd = "ffmpeg -y -i " + temp_video_path + " " + temp_gif_path;
-
-  int gif_ret = system(gif_cmd.c_str());
-  if (gif_ret != 0) {
-    throw std::runtime_error("ffmpeg gif command failed!");
+  std::string result;
+  std::vector<char> buffer(8192);
+  size_t n;
+  while ((n = fread(buffer.data(), 1, buffer.size(), pipe)) > 0) {
+    result.append(buffer.data(), n);
   }
 
-  std::ifstream video_file(temp_gif_path, std::ios::binary);
-  if (!video_file) {
-    throw std::runtime_error("Could not open temporary video file!");
+  int rc = pclose(pipe);
+  if (rc == -1) {
+    throw std::runtime_error("Error waiting for ffmpeg to finish");
+  }
+  if (WIFEXITED(rc)) {
+    int exit_status = WEXITSTATUS(rc);
+    if (exit_status != 0) {
+      throw std::runtime_error("ffmpeg failed with exit code " +
+                               std::to_string(exit_status));
+    }
+  } else {
+    throw std::runtime_error("ffmpeg terminated abnormally");
   }
 
-  std::string video_data((std::istreambuf_iterator<char>(video_file)),
-                         std::istreambuf_iterator<char>());
-
-  video_file.close();
-  std::remove(temp_video_path.c_str());
-  std::remove(temp_gif_path.c_str());
-
-  return video_data;
+  return result;
 }

@@ -1,4 +1,5 @@
 ## Dependencies
 
-- dpp
-- sqlpp23
+- dpp (In cwd)
+- sqlpp23 (In cwd)
+- ffmpeg (In PATH)
