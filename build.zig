@@ -1,6 +1,8 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
+    const optimize = b.standardOptimizeOption(.{});
+
     const build_dir = b.addSystemCommand(&.{ "mkdir", "-p", "build" });
 
     const exe = addExecutable(b, .{
@@ -16,6 +18,7 @@ pub fn build(b: *std.Build) void {
             "dpp",
             "sqlite3",
         },
+        .optimize = optimize,
     });
 
     exe.step.dependOn(&build_dir.step);
@@ -38,23 +41,32 @@ pub fn build(b: *std.Build) void {
 
 const ExecutableOptions = struct {
     name: []const u8,
-    source_files: []const []const u8,
-    include_dirs: []const []const u8,
-    library_dirs: []const []const u8,
-    libraries: []const []const u8,
+    optimize: std.builtin.OptimizeMode = std.builtin.OptimizeMode.Debug,
+    source_files: []const []const u8 = &.{},
+    include_dirs: []const []const u8 = &.{},
+    library_dirs: []const []const u8 = &.{},
+    libraries: []const []const u8 = &.{},
 };
 
-fn addExecutable(b: *std.Build, comptime options: ExecutableOptions) *std.Build.Step.Run {
+fn addExecutable(b: *std.Build, options: ExecutableOptions) *std.Build.Step.Run {
     var cmd = std.ArrayList([]const u8).initCapacity(b.allocator, options.source_files.len +
         options.include_dirs.len * 2 + options.library_dirs.len * 2 + options.libraries.len * 2 + 6) catch @panic("OOM");
     defer cmd.deinit(b.allocator);
+    const mode = switch (options.optimize) {
+        .Debug => "-O0",
+        .ReleaseFast => "-O3",
+        .ReleaseSmall => "-Oz",
+        .ReleaseSafe => @panic("ReleaseSafe is not supported"),
+    };
+    const output_file = b.fmt("build/{s}", .{options.name});
+    defer b.allocator.free(output_file);
     cmd.appendSliceAssumeCapacity(&.{
         "clang++",
         "-std=c++23",
         "-Wall",
-        "-O3",
         "-o",
-        "build/" ++ options.name,
+        output_file,
+        mode,
     });
     for (options.source_files) |source_file| {
         cmd.appendSliceAssumeCapacity(&.{
