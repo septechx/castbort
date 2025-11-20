@@ -75,7 +75,7 @@ int main() {
 
       event.thinking(false, [event, &db, user_id, spent, color](
                                 const dpp::confirmation_callback_t &callback) {
-        const int rnd = bounded_rand(100);
+        const int rnd = bounded_rand(99) + 1;
         const Color clr = rnd < 50   ? Color::red
                           : rnd > 50 ? Color::black
                                      : Color::green;
@@ -89,13 +89,12 @@ int main() {
 
         const std::string video_bytes =
             generate_video("assets/castor.png", "assets/overlay.png");
-        dpp::message msg(event.command.channel_id, "a");
+        dpp::message msg(event.command.channel_id, "Spinning...");
         msg.add_file("out.gif", video_bytes, "image/gif");
 
         event.edit_original_response(msg);
 
-        // Wait for the gif to play
-        sleep(8);
+        sleep(11);
 
         event.edit_original_response(dpp::message(
             "Ball landed on " + clr_str + ".\nYou " + (won ? "won" : "lost") +

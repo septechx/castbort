@@ -4,17 +4,19 @@
 
 std::string generate_video(const std::string &f1_path,
                            const std::string &f2_path) {
-  std::string cmd = "ffmpeg -y -loglevel error -nostats "
-                    "-loop 1 -t 7 -i \"" +
-                    f1_path + "\" -i \"" + f2_path +
-                    "\" "
-                    "-filter_complex "
-                    "\"[0:v]rotate='if(lte(t,7),2*PI*t*(1-t/10),2*PI*7*(1-7/"
-                    "10))':c=none:ow=rotw(iw):oh=roth(ih)[r];"
-                    "[r][1:v]overlay=(W-w)/2:(H-h)/2,split=2[s0][s1];"
-                    "[s0]palettegen=stats_mode=diff[p];"
-                    "[s1][p]paletteuse\" "
-                    "-f gif -";
+
+  std::string cmd =
+      "ffmpeg -y -loglevel error -nostats "
+      "-loop 1 -t 8 -i \"" +
+      f1_path + "\" -i \"" + f2_path +
+      "\" "
+      "-filter_complex "
+      "\"[0:v]rotate='2*PI*min(t,7)*(1-min(t,7)/"
+      "14)':c=none:ow=rotw(iw):oh=roth(ih)[r];"
+      "[r][1:v]overlay=(W-w)/2:(H-h)/2,fps=15,scale=480:-2,split=2[s0][s1];"
+      "[s0]palettegen=max_colors=64[p];"
+      "[s1][p]paletteuse=dither=none\" "
+      "-f gif -";
 
   FILE *pipe = popen(cmd.c_str(), "r");
   if (!pipe) {
