@@ -13,11 +13,11 @@ int main() {
   sqlpp::sqlite3::connection db = database::init(std::getenv("DATABASE_PATH"));
 
   commands::command_context ctx{db};
-  std::unordered_map<std::string, std::unique_ptr<commands::command>> commands{
-      {"ping", std::make_unique<commands::ping>(&ctx)},
-      {"give_stones", std::make_unique<commands::give_stones>(&ctx)},
-      {"roulette", std::make_unique<commands::roulette>(&ctx)},
-  };
+  std::unordered_map<std::string, std::unique_ptr<commands::command>> commands;
+  commands.emplace("ping", std::make_unique<commands::ping>(&ctx));
+  commands.emplace("give_stones",
+                   std::make_unique<commands::give_stones>(&ctx));
+  commands.emplace("roulette", std::make_unique<commands::roulette>(&ctx));
 
   bot.on_log(dpp::utility::cout_logger());
 
