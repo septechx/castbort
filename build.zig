@@ -13,6 +13,7 @@ pub fn build(b: *std.Build) void {
             "src/main.cpp",
             "src/database.cpp",
             "src/video_generator.cpp",
+            "src/commands.cpp",
         },
         .libraries = &.{
             "dpp",
