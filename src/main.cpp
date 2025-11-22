@@ -5,6 +5,8 @@
 #include "commands.hpp"
 #include "database.hpp"
 
+#define COMMAND(name, cmd) commands.emplace(name, std::make_unique<cmd>(&ctx));
+
 int main() {
   dotenv::init();
   std::srand(std::time({}));
@@ -14,10 +16,9 @@ int main() {
 
   commands::command_context ctx{db};
   std::unordered_map<std::string, std::unique_ptr<commands::command>> commands;
-  commands.emplace("ping", std::make_unique<commands::ping>(&ctx));
-  commands.emplace("give_stones",
-                   std::make_unique<commands::give_stones>(&ctx));
-  commands.emplace("roulette", std::make_unique<commands::roulette>(&ctx));
+  COMMAND("ping", commands::ping);
+  COMMAND("give_stones", commands::give_stones);
+  COMMAND("roulette", commands::roulette);
 
   bot.on_log(dpp::utility::cout_logger());
 
